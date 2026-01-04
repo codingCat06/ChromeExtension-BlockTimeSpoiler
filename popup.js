@@ -10,6 +10,7 @@ const DEFAULT_SETTINGS = {
 // DOM 요소 - DOMContentLoaded 후에 초기화
 let percentageInput, timeInput, statusMessage;
 let modePercentage, modeTime, percentageSection, timeSection;
+let enableToggle;
 
 // 설정 로드
 async function loadSettings() {
@@ -40,6 +41,7 @@ async function saveSettings(settings) {
 
 // UI 업데이트
 function updateUI(settings) {
+  if (enableToggle) enableToggle.checked = settings.enabled;
   if (percentageInput) percentageInput.value = settings.percentageThreshold;
   if (timeInput) timeInput.value = settings.timeThreshold;
   
@@ -74,7 +76,7 @@ function updateInputSections(mode) {
 // 설정 읽기 및 반영
 function getSettingsFromUI() {
   return {
-    enabled: true, // 항상 활성화 (popup에서 설정하면 사용하겠다는 의미)
+    enabled: enableToggle ? enableToggle.checked : DEFAULT_SETTINGS.enabled,
     thresholdMode: (modeTime && modeTime.checked) ? 'time' : 'percentage',
     percentageThreshold: parseInt(percentageInput?.value) || DEFAULT_SETTINGS.percentageThreshold,
     timeThreshold: parseInt(timeInput?.value) || DEFAULT_SETTINGS.timeThreshold
@@ -129,6 +131,7 @@ async function autoSave() {
 // DOM 초기화 및 이벤트 리스너 등록
 function initializeDOM() {
   // DOM 요소 가져오기
+  enableToggle = document.getElementById('enableToggle');
   percentageInput = document.getElementById('percentageThreshold');
   timeInput = document.getElementById('timeThreshold');
   statusMessage = document.getElementById('statusMessage');
@@ -136,6 +139,11 @@ function initializeDOM() {
   modeTime = document.getElementById('modeTime');
   percentageSection = document.getElementById('percentageSection');
   timeSection = document.getElementById('timeSection');
+
+  // 토글 변경 시 자동 저장
+  if (enableToggle) {
+    enableToggle.addEventListener('change', autoSave);
+  }
 
   // 모드 라디오 버튼 변경 시 자동 저장
   if (modePercentage) {

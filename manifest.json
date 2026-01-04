@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "YouTube Time Spoiler Blocker",
+  "version": "1.0.0",
+  "description": "유튜브 남은 시간을 숨겨 결말 스포일러를 방지합니다",
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "*://*.youtube.com/*"
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://*.youtube.com/*"],
+      "js": ["content.js"],
+      "css": ["styles.css"],
+      "run_at": "document_end"
+    }
+  ]
+
+}

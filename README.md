@@ -37,19 +37,15 @@ Click the extension icon in your browser toolbar to open the settings popup:
 
 On the YouTube video player, you can toggle the extension on/off using the clock button in the control bar:
 
-![Player Toggle](docs/player-toggle.png)
+![Player Toggle + LockMarker](docs/player-toggle.png)
 
 - **Blue icon**: Extension is ON
 - **White icon**: Extension is OFF
 
-### Lock Marker (🔒)
-
-The lock marker on the progress bar indicates where the spoiler blocking begins:
-
-![Lock Marker](docs/marker.png)
-
 - Everything **after** the 🔒 marker is hidden
 - The progress bar, buffer indicator, and scrubber will not go past this point
+### Lock Marker (🔒)
+
 
 ## How It Works
 

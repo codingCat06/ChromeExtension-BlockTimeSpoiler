@@ -21,6 +21,36 @@ A Chrome extension that blocks video progress spoilers on YouTube by limiting ho
 4. Click "Load unpacked" and select the extension folder
 5. The extension icon will appear in your toolbar
 
+## Usage
+
+### Popup Settings
+
+Click the extension icon in your browser toolbar to open the settings popup:
+
+![Popup Settings](docs/popup.png)
+
+- **Percentage mode**: Hide the last X% of the video
+- **Time mode**: Hide the last X minutes of the video
+- Settings are **auto-saved** as you change them
+
+### Player Controls
+
+On the YouTube video player, you can toggle the extension on/off using the clock button in the control bar:
+
+![Player Toggle](docs/player-toggle.png)
+
+- **Blue icon**: Extension is ON
+- **White icon**: Extension is OFF
+
+### Lock Marker (🔒)
+
+The lock marker on the progress bar indicates where the spoiler blocking begins:
+
+![Lock Marker](docs/marker.png)
+
+- Everything **after** the 🔒 marker is hidden
+- The progress bar, buffer indicator, and scrubber will not go past this point
+
 ## How It Works
 
 ### YouTube Progress Bar Structure

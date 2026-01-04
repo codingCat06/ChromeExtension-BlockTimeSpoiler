@@ -210,8 +210,9 @@ class YouTubeSpoilerBlocker {
     // YouTube는 chapter를 늦게 로드하므로, 여러 개의 chapter-hover-container가 있는지 확인
     const chapters = document.querySelectorAll('.ytp-chapter-hover-container');
     
-    // 첫 번째 시도이고 chapter가 0~1개면 더 대기 (chapter가 더 로드될 수 있음)
-    if (retries < 15 && chapters.length <= 1) {
+    // chapter가 0~1개이고 아직 충분히 대기하지 않았으면 조금 더 대기
+    // 하지만 5회 이상 시도했으면 그냥 진행 (chapter가 없거나 1개인 영상일 수 있음)
+    if (retries < 5 && chapters.length <= 1) {
       console.log(`[Spoiler Blocker] Waiting for chapters to load... (${chapters.length} chapters found, retry ${retries + 1}/${maxRetries})`);
       setTimeout(() => this.waitForProgressBarAndSetup(retries + 1), 300);
       return;
@@ -338,11 +339,16 @@ class YouTubeSpoilerBlocker {
     clipPoint = Math.max(0, clipPoint);
     const clipPercentage = (clipPoint / duration) * 100;
 
-    // clipPercentage 유효성 검사
-    if (clipPercentage <= 0 || clipPercentage > 100) {
+    // clipPercentage 유효성 검사 (0~100% 사이)
+    if (clipPercentage < 0 || clipPercentage > 100 || isNaN(clipPercentage)) {
       console.log(`[Spoiler Blocker] Invalid clip percentage: ${clipPercentage}%, retrying...`);
       setTimeout(() => this.setupSpoilerBlocker(), 500);
       return;
+    }
+
+    // 0%면 전체 숨김 (의미 없음), 100%면 아무것도 숨기지 않음
+    if (clipPercentage === 0) {
+      console.log('[Spoiler Blocker] Clip at 0% - nothing to show');
     }
 
     console.log(`[Spoiler Blocker] Duration: ${duration}s, Clip Point: ${clipPoint}s (${clipPercentage.toFixed(1)}%)`);
@@ -364,17 +370,24 @@ class YouTubeSpoilerBlocker {
     }
 
     // Chapter 정보 수집
+    // YouTube는 chapter가 있으면 .ytp-chapter-hover-container를 사용
+    // chapter가 없거나 1개일 때는 .ytp-progress-list를 직접 사용할 수 있음
     const chapters = document.querySelectorAll('.ytp-chapter-hover-container');
     const chaptersInfo = [];
     
-    if (chapters.length === 0) {
-      // Chapter가 없는 경우 - 전체를 하나의 chapter로 취급
+    if (chapters.length <= 1) {
+      // Chapter가 없거나 1개인 경우 - 전체를 하나로 취급
+      // .ytp-progress-list 또는 progressBar 자체를 element로 사용
+      const progressList = document.querySelector('.ytp-progress-list') || progressBar;
+      
       chaptersInfo.push({
-        element: progressBar,
+        element: progressList,
         maxScaleX: clipPercentage / 100,
         isAfterClip: false,
         isBeforeClip: false
       });
+      
+      console.log(`[Spoiler Blocker] Single/No chapter mode, maxScaleX: ${(clipPercentage / 100).toFixed(3)}`);
     } else {
       let accumulatedWidth = 0;
       
@@ -651,10 +664,36 @@ class YouTubeSpoilerBlocker {
 }
 
 // 초기화
+let blockerInstance = null;
+
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
-    new YouTubeSpoilerBlocker();
+    blockerInstance = new YouTubeSpoilerBlocker();
   });
 } else {
-  new YouTubeSpoilerBlocker();
+  blockerInstance = new YouTubeSpoilerBlocker();
 }
+
+// Popup에서 설정 변경 메시지 수신
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === 'SETTINGS_UPDATED' && blockerInstance) {
+    console.log('[Spoiler Blocker] Settings updated from popup:', message.settings);
+    
+    // 설정 업데이트
+    blockerInstance.settings.thresholdMode = message.settings.thresholdMode;
+    blockerInstance.settings.percentageThreshold = message.settings.percentageThreshold;
+    blockerInstance.settings.timeThreshold = message.settings.timeThreshold;
+    blockerInstance.enabled = message.settings.enabled;
+    
+    // 기존 설정 정리 후 재적용
+    blockerInstance.cleanup();
+    
+    if (blockerInstance.enabled) {
+      blockerInstance.clipData = null;
+      blockerInstance.setupSpoilerBlocker();
+    }
+    
+    sendResponse({ success: true });
+  }
+  return true;
+});

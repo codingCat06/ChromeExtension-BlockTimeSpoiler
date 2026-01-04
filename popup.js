@@ -106,6 +106,18 @@ async function autoSave() {
     const settings = getSettingsFromUI();
     try {
       await saveSettings(settings);
+      
+      // 현재 YouTube 탭에 설정 변경 알림 (새로고침 없이)
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tab && tab.url && tab.url.includes('youtube.com')) {
+        chrome.tabs.sendMessage(tab.id, {
+          type: 'SETTINGS_UPDATED',
+          settings: settings
+        }).catch(() => {
+          // Content script가 아직 로드되지 않은 경우 무시
+        });
+      }
+      
       showStatus('Auto-saved!', 'success');
     } catch (error) {
       console.error('Auto-save error:', error);

@@ -290,51 +290,28 @@
     <p class="subtitle">Block YouTube ending spoilers</p>
   </div>
 
-  <div class="toggle-section">
-    <div class="toggle-container">
-      <span class="toggle-label">Enable Extension</span>
-      <label class="toggle-switch">
-        <input type="checkbox" id="enableToggle">
-        <span class="slider"></span>
-      </label>
-    </div>
-  </div>
-
   <div class="settings-section">
-    <label>Threshold Mode</label>
-    <div class="radio-group">
-      <div class="radio-option">
-        <input type="radio" id="modePercentage" name="thresholdMode" value="percentage">
-        <label for="modePercentage">Percentage based</label>
-      </div>
-      <div class="radio-option">
-        <input type="radio" id="modeTime" name="thresholdMode" value="time">
-        <label for="modeTime">Time based</label>
-      </div>
-    </div>
-
-    <div class="setting-item" id="percentageSection" style="margin-top: 16px;">
-      <label for="percentageThreshold">Hide last X% of video</label>
+    <div class="setting-item">
       <div class="input-group">
-        <input type="number" id="percentageThreshold" min="0" max="100" step="5">
+        <input type="radio" id="modePercentage" name="thresholdMode" value="percentage" checked>
+        <label for="modePercentage">Hide last X% of video</label>
+      </div>
+      <div class="input-group" id="percentageSection" style="margin-left: 24px; margin-top: 8px;">
+        <input type="number" id="percentageThreshold" min="0" max="100" step="5" value="30">
         <span class="unit">%</span>
       </div>
-      <p class="description">Hides the last portion (e.g., 30% = hide last 30%)</p>
     </div>
 
-    <div class="setting-item" id="timeSection">
-      <label for="timeThreshold">Hide last X minutes of video</label>
+    <div class="setting-item">
       <div class="input-group">
-        <input type="number" id="timeThreshold" min="0" max="120" step="1">
+        <input type="radio" id="modeTime" name="thresholdMode" value="time">
+        <label for="modeTime">Hide last X minutes of video</label>
+      </div>
+      <div class="input-group" id="timeSection" style="margin-left: 24px; margin-top: 8px;">
+        <input type="number" id="timeThreshold" min="0" max="120" step="1" value="10">
         <span class="unit">min</span>
       </div>
-      <p class="description">Hides the last minutes (e.g., 10 = hide last 10 min)</p>
     </div>
-  </div>
-
-  <div class="button-group">
-    <button class="btn-save" id="saveBtn">Save</button>
-    <button class="btn-reset" id="resetBtn">Reset</button>
   </div>
 
   <div class="status-message" id="statusMessage"></div>

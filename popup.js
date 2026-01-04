@@ -1,23 +1,15 @@
 // YouTube Spoiler Blocker - Popup Script
 
 const DEFAULT_SETTINGS = {
-  enabled: false,
+  enabled: true,
   thresholdMode: 'percentage', // 'percentage' or 'time'
   percentageThreshold: 30,
   timeThreshold: 10
 };
 
-// DOM 요소
-const enableToggle = document.getElementById('enableToggle');
-const percentageInput = document.getElementById('percentageThreshold');
-const timeInput = document.getElementById('timeThreshold');
-const saveBtn = document.getElementById('saveBtn');
-const resetBtn = document.getElementById('resetBtn');
-const statusMessage = document.getElementById('statusMessage');
-const modePercentage = document.getElementById('modePercentage');
-const modeTime = document.getElementById('modeTime');
-const percentageSection = document.getElementById('percentageSection');
-const timeSection = document.getElementById('timeSection');
+// DOM 요소 - DOMContentLoaded 후에 초기화
+let percentageInput, timeInput, statusMessage;
+let modePercentage, modeTime, percentageSection, timeSection;
 
 // 설정 로드
 async function loadSettings() {
@@ -28,8 +20,8 @@ async function loadSettings() {
         const settings = {
           enabled: result.enabled !== undefined ? result.enabled : DEFAULT_SETTINGS.enabled,
           thresholdMode: result.thresholdMode || DEFAULT_SETTINGS.thresholdMode,
-          percentageThreshold: result.percentageThreshold || DEFAULT_SETTINGS.percentageThreshold,
-          timeThreshold: result.timeThreshold || DEFAULT_SETTINGS.timeThreshold
+          percentageThreshold: result.percentageThreshold !== undefined ? result.percentageThreshold : DEFAULT_SETTINGS.percentageThreshold,
+          timeThreshold: result.timeThreshold !== undefined ? result.timeThreshold : DEFAULT_SETTINGS.timeThreshold
         };
         resolve(settings);
       }
@@ -48,17 +40,18 @@ async function saveSettings(settings) {
 
 // UI 업데이트
 function updateUI(settings) {
-  enableToggle.checked = settings.enabled;
-  percentageInput.value = settings.percentageThreshold;
-  timeInput.value = settings.timeThreshold;
+  if (percentageInput) percentageInput.value = settings.percentageThreshold;
+  if (timeInput) timeInput.value = settings.timeThreshold;
   
   // 모드 라디오 버튼 설정
-  if (settings.thresholdMode === 'time') {
-    modeTime.checked = true;
-    modePercentage.checked = false;
-  } else {
-    modePercentage.checked = true;
-    modeTime.checked = false;
+  if (modePercentage && modeTime) {
+    if (settings.thresholdMode === 'time') {
+      modeTime.checked = true;
+      modePercentage.checked = false;
+    } else {
+      modePercentage.checked = true;
+      modeTime.checked = false;
+    }
   }
   
   // 입력 섹션 활성화/비활성화
@@ -67,6 +60,8 @@ function updateUI(settings) {
 
 // 입력 섹션 활성화/비활성화
 function updateInputSections(mode) {
+  if (!percentageSection || !timeSection) return;
+  
   if (mode === 'percentage') {
     percentageSection.classList.remove('disabled-input');
     timeSection.classList.add('disabled-input');
@@ -79,15 +74,17 @@ function updateInputSections(mode) {
 // 설정 읽기 및 반영
 function getSettingsFromUI() {
   return {
-    enabled: enableToggle.checked,
-    thresholdMode: modeTime.checked ? 'time' : 'percentage',
-    percentageThreshold: parseInt(percentageInput.value) || DEFAULT_SETTINGS.percentageThreshold,
-    timeThreshold: parseInt(timeInput.value) || DEFAULT_SETTINGS.timeThreshold
+    enabled: true, // 항상 활성화 (popup에서 설정하면 사용하겠다는 의미)
+    thresholdMode: (modeTime && modeTime.checked) ? 'time' : 'percentage',
+    percentageThreshold: parseInt(percentageInput?.value) || DEFAULT_SETTINGS.percentageThreshold,
+    timeThreshold: parseInt(timeInput?.value) || DEFAULT_SETTINGS.timeThreshold
   };
 }
 
 // 상태 메시지 표시
 function showStatus(message, type = 'success') {
+  if (!statusMessage) return;
+  
   statusMessage.textContent = message;
   statusMessage.className = `status-message show ${type}`;
 
@@ -96,101 +93,78 @@ function showStatus(message, type = 'success') {
   }, 2000);
 }
 
-// 유효성 검사
-function validateSettings(settings) {
-  if (settings.percentageThreshold < 0 || settings.percentageThreshold > 100) {
-    showStatus('Percentage must be between 0-100%', 'error');
-    return false;
+// 자동 저장 (debounce 적용)
+let saveTimeout = null;
+async function autoSave() {
+  // 이전 타이머 취소
+  if (saveTimeout) {
+    clearTimeout(saveTimeout);
   }
-
-  if (settings.timeThreshold < 0 || settings.timeThreshold > 120) {
-    showStatus('Time must be between 0-120 minutes', 'error');
-    return false;
-  }
-
-  return true;
+  
+  // 300ms 후에 저장 (연속 입력 시 마지막 입력만 저장)
+  saveTimeout = setTimeout(async () => {
+    const settings = getSettingsFromUI();
+    try {
+      await saveSettings(settings);
+      showStatus('Auto-saved!', 'success');
+    } catch (error) {
+      console.error('Auto-save error:', error);
+      showStatus('Error saving settings', 'error');
+    }
+  }, 300);
 }
 
-// 저장 버튼 클릭
-saveBtn.addEventListener('click', async () => {
-  const settings = getSettingsFromUI();
+// DOM 초기화 및 이벤트 리스너 등록
+function initializeDOM() {
+  // DOM 요소 가져오기
+  percentageInput = document.getElementById('percentageThreshold');
+  timeInput = document.getElementById('timeThreshold');
+  statusMessage = document.getElementById('statusMessage');
+  modePercentage = document.getElementById('modePercentage');
+  modeTime = document.getElementById('modeTime');
+  percentageSection = document.getElementById('percentageSection');
+  timeSection = document.getElementById('timeSection');
 
-  if (!validateSettings(settings)) {
-    return;
+  // 모드 라디오 버튼 변경 시 자동 저장
+  if (modePercentage) {
+    modePercentage.addEventListener('change', () => {
+      updateInputSections('percentage');
+      autoSave();
+    });
   }
 
-  try {
-    await saveSettings(settings);
-    showStatus('Settings saved!', 'success');
-
-    // 현재 탭의 content script에 설정 변경 알림
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (tab && tab.url && tab.url.includes('youtube.com')) {
-      chrome.tabs.reload(tab.id);
-    }
-  } catch (error) {
-    console.error('Save error:', error);
-    showStatus('Error saving settings', 'error');
+  if (modeTime) {
+    modeTime.addEventListener('change', () => {
+      updateInputSections('time');
+      autoSave();
+    });
   }
-});
 
-// 초기화 버튼 클릭
-resetBtn.addEventListener('click', async () => {
-  if (confirm('Reset all settings to default?')) {
-    try {
-      await saveSettings(DEFAULT_SETTINGS);
-      updateUI(DEFAULT_SETTINGS);
-      showStatus('Settings reset!', 'success');
-    } catch (error) {
-      console.error('Reset error:', error);
-      showStatus('Error resetting settings', 'error');
-    }
+  // 입력값 변경 시 자동 저장 및 유효성 검사
+  if (percentageInput) {
+    percentageInput.addEventListener('input', () => {
+      let value = parseInt(percentageInput.value);
+      if (value < 0) percentageInput.value = 0;
+      if (value > 100) percentageInput.value = 100;
+      autoSave();
+    });
   }
-});
 
-// 토글 스위치 변경 시 즉시 저장
-enableToggle.addEventListener('change', async () => {
-  const settings = getSettingsFromUI();
-  try {
-    await saveSettings(settings);
-    showStatus(settings.enabled ? 'Extension enabled' : 'Extension disabled', 'success');
-
-    // 현재 탭 새로고침
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (tab && tab.url && tab.url.includes('youtube.com')) {
-      chrome.tabs.reload(tab.id);
-    }
-  } catch (error) {
-    console.error('Toggle error:', error);
-    showStatus('Error saving settings', 'error');
+  if (timeInput) {
+    timeInput.addEventListener('input', () => {
+      let value = parseInt(timeInput.value);
+      if (value < 0) timeInput.value = 0;
+      if (value > 120) timeInput.value = 120;
+      autoSave();
+    });
   }
-});
-
-// 모드 라디오 버튼 변경
-modePercentage.addEventListener('change', () => {
-  updateInputSections('percentage');
-});
-
-modeTime.addEventListener('change', () => {
-  updateInputSections('time');
-});
-
-// 입력값 실시간 유효성 검사
-percentageInput.addEventListener('input', () => {
-  const value = parseInt(percentageInput.value);
-  if (value < 0) percentageInput.value = 0;
-  if (value > 100) percentageInput.value = 100;
-});
-
-timeInput.addEventListener('input', () => {
-  const value = parseInt(timeInput.value);
-  if (value < 0) timeInput.value = 0;
-  if (value > 120) timeInput.value = 120;
-});
-
+}
 
 // 초기 로드
-(async () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  initializeDOM();
+  
+  // 설정 불러오기 및 UI 업데이트
   const settings = await loadSettings();
   updateUI(settings);
-})();
+});
